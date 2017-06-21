@@ -225,6 +225,10 @@ func randomAnswer() (string) {
 
 func prepareSqlite(nick string) (*sql.DB) {
 
+  if _, err := os.Stat("./db"); os.IsNotExist(err) {
+    os.Mkdir("./db", 0600)
+  }
+
   dbFile := "./db/" + nick + ".db"
 
   fmt.Printf("File '%s' doesn't exist, creating db ..\n",dbFile)
