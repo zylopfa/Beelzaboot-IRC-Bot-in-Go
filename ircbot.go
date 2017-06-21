@@ -2,7 +2,6 @@ package main
 
 import (
   "net"
-  "io/ioutil"
   "os"
   "fmt"
   "time"
@@ -161,10 +160,6 @@ func main() {
 
   }
 
-  result,err := ioutil.ReadAll(conn)
-  checkError(err)
-
-  fmt.Println(string(result))
 
   os.Exit(0)
 }
