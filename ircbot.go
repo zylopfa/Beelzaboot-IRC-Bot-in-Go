@@ -84,8 +84,6 @@ func main() {
 
     if ( haveJoinedChannel && len(s) >= 2 ) {
 
-      // :Zylopfa!Zylopfa@ilovekagesomuchithurtwhenipee.ml PRIVMSG #bots :Hello bots
-
       var infoPart string = s[1]
       var msgPart string = ""
 
@@ -130,7 +128,7 @@ func main() {
          checkError(err)
         }
 
-
+      // End of bot directed messages
       } else {
         if strings.Contains(msgPart,"\x01ACTION") {
           actionList := strings.Split(msgPart,"\x01")
@@ -155,7 +153,6 @@ func main() {
            }
         }
       }
-      // End of bot directed messages
 
     }
 
