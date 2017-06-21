@@ -27,6 +27,11 @@ type ircmessage struct {
 
 func main() {
 
+  start := time.Now()
+  var jointime time.Duration
+
+  debug := 1  // 0: dont print anything, but fatal errors, 1: print only join time, 2: print all info
+
   if len(os.Args) != 3 {
    fmt.Fprintf(os.Stderr,"Usage: %s host:port channel \n",os.Args[0])
    os.Exit(1)
@@ -70,11 +75,11 @@ func main() {
       strLen++
       continue
     }
-    fmt.Printf("%s\n",line)
+
+    if ( debug == 2 ) {  fmt.Printf("%s\n",line) }
 
 
     if ( strings.Contains(line,"NOTICE") && !identified ) {
-      fmt.Print("Identifying!\n")
 
       _,err = conn.Write([]byte("USER " + nick + " \"\" \"\" :" + nick + "\r\n"))
       checkError(err)
@@ -101,6 +106,11 @@ func main() {
 
     if ( haveJoinedChannel && len(s) >= 2 ) {
 
+      if ( jointime == 0 ) {
+        jointime = time.Since(start)
+        if debug >= 1 {log.Printf("Time taken to join channel %s\n", jointime) }
+      }
+
       var infoPart string = s[1]
       var msgPart string = ""
 
@@ -126,13 +136,14 @@ func main() {
         to  = infoArr[2]
       }
 
-
-      fmt.Printf("From         : %s\n",from)
-      fmt.Printf("From domain  : %s\n",domain)
-      fmt.Printf("To           : %s\n",to)
-      fmt.Printf("Command      : %s\n",cmd)
-      fmt.Printf("Message: %s\n",msgPart)
-      fmt.Print("\n")
+      if debug >= 2 {
+        fmt.Printf("From         : %s\n",from)
+        fmt.Printf("From domain  : %s\n",domain)
+        fmt.Printf("To           : %s\n",to)
+        fmt.Printf("Command      : %s\n",cmd)
+        fmt.Printf("Message: %s\n",msgPart)
+        fmt.Print("\n")
+      }
 
       irc := ircmessage{from: from, domain: domain,to: to,cmd:cmd,msg:msgPart}
 
@@ -143,10 +154,14 @@ func main() {
 
       // Message directed to the BOT
       if  cmd == "PRIVMSG" && to == nick   {
-        fmt.Printf("Message to the bot!\n")
+        if debug >= 2 {
+          fmt.Printf("Message to the bot!\n")
+        }
 
         if strings.Contains(msgPart,"\x01VERSION\x01") {
-          fmt.Printf("%s want my version!\n",from)
+          if debug >= 2 {
+            fmt.Printf("%s want my version!\n",from)
+          }
           _,err = conn.Write([]byte("NOTICE " + from + " :" + "\x01VERSION Belzaboot 1.0 - The Canadian Devil IRC Bot\x01\r\n" ))
          checkError(err)
         }
@@ -159,13 +174,17 @@ func main() {
             actionList[1] = "Here " + randomPronoun() + " have some canadough!!"
             _,err = conn.Write([]byte(cmd + " " + from + " :" +  strings.Join(actionList,"\x01")))
 
-            fmt.Printf("We are actioned!\n")
+            if debug >= 2 {
+              fmt.Printf("We are actioned!\n")
+            }
           }
         }
 
         if strings.Contains(msgPart,nick) && strings.Contains(to,"#") {
-           fmt.Printf("Addressing by name " + to);
 
+           if debug >= 2 {
+             fmt.Printf("Addressing by name " + to);
+           }
            randString := randomAnswer();
 
            if strings.Contains(randString,"%s") {
@@ -223,6 +242,8 @@ func randomAnswer() (string) {
 }
 
 
+
+
 func prepareSqlite(nick string) (*sql.DB) {
 
   if _, err := os.Stat("./db"); os.IsNotExist(err) {
@@ -231,8 +252,6 @@ func prepareSqlite(nick string) (*sql.DB) {
 
   dbFile := "./db/" + nick + ".db"
 
-  fmt.Printf("File '%s' doesn't exist, creating db ..\n",dbFile)
-
   db, err := sql.Open("sqlite3",dbFile)
 
   if err != nil {
@@ -240,6 +259,8 @@ func prepareSqlite(nick string) (*sql.DB) {
   }
 
   if _, err := os.Stat(dbFile ); os.IsNotExist(err) {
+
+    fmt.Printf("File '%s' doesn't exist, creating db ..\n",dbFile)
 
     sqlStatement := `
       CREATE TABLE sqlLog (fromNick TEXT, fromDomain TEXT, toEntity TEXT, command TEXT,message TEXT, msgDate DATETIME)
