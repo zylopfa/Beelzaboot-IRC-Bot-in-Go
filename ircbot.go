@@ -7,7 +7,22 @@ import (
   "time"
   "strings"
   "math/rand"
+  "log"
+  "database/sql" 
+  _ "github.com/mattn/go-sqlite3" 
 )
+
+
+
+type ircmessage struct {
+    from string
+    domain string
+    to string
+    cmd string
+    msg string
+}
+
+
 
 
 func main() {
@@ -39,6 +54,9 @@ func main() {
 
   var identified bool = false
   var haveJoinedChannel = false
+
+  // sqlite3 database initialization
+  db :=  prepareSqlite(nick)
 
   for {
 
@@ -115,6 +133,12 @@ func main() {
       fmt.Printf("Command      : %s\n",cmd)
       fmt.Printf("Message: %s\n",msgPart)
       fmt.Print("\n")
+
+      irc := ircmessage{from: from, domain: domain,to: to,cmd:cmd,msg:msgPart}
+
+      if ( irc.from != "" ) {
+        db_logIrcMessage(db,irc)
+      }
 
 
       // Message directed to the BOT
@@ -196,4 +220,64 @@ func randomAnswer() (string) {
   }
 
   return answers[rand.Int() % len(answers)];
+}
+
+
+func prepareSqlite(nick string) (*sql.DB) {
+
+  dbFile := "./db/" + nick + ".db"
+
+  fmt.Printf("File '%s' doesn't exist, creating db ..\n",dbFile)
+
+  db, err := sql.Open("sqlite3",dbFile)
+
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  if _, err := os.Stat(dbFile ); os.IsNotExist(err) {
+
+    sqlStatement := `
+      CREATE TABLE sqlLog (fromNick TEXT, fromDomain TEXT, toEntity TEXT, command TEXT,message TEXT, msgDate DATETIME)
+    `
+
+    _, err = db.Exec(sqlStatement)
+    if err != nil {
+      log.Printf("%q: %s\n", err, sqlStatement)
+      return nil
+    }
+  }
+
+  return db
+
+}
+
+
+
+
+func db_logIrcMessage(db *sql.DB,irc ircmessage) {
+
+
+  tx, err := db.Begin()
+
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  stmt, err := tx.Prepare("insert into sqlLog(fromNick, fromDomain, toEntity, command, message, msgDate ) values(?,?,?,?,?,datetime('now'))")
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  defer stmt.Close()
+
+  _,err = stmt.Exec(irc.from, irc.domain, irc.to, irc.cmd, irc.msg)
+
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  tx.Commit()
+
+
 }
