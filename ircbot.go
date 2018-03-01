@@ -23,8 +23,6 @@ type ircmessage struct {
 }
 
 
-
-
 func main() {
 
   start := time.Now()
@@ -32,8 +30,8 @@ func main() {
 
   debug := 1  // 0: dont print anything, but fatal errors, 1: print only join time, 2: print all info
 
-  if len(os.Args) != 3 {
-   fmt.Fprintf(os.Stderr,"Usage: %s host:port channel \n",os.Args[0])
+  if len(os.Args) != 5 {
+   fmt.Fprintf(os.Stderr,"Usage: %s host:port channel nick bindaddress\n",os.Args[0])
    os.Exit(1)
   }
 
@@ -42,12 +40,14 @@ func main() {
   channel := os.Args[2]
   service := os.Args[1]
  
-  nick := "Beelzaboot"
+  nick := os.Args[3]
 
-  tcpAddr,err := net.ResolveTCPAddr("tcp4",service)
+  bindAddr,err := net.ResolveTCPAddr("tcp", os.Args[4] + ":0") 
+
+  tcpAddr,err := net.ResolveTCPAddr("tcp6",service)
   checkError(err)
 
-  conn,err := net.DialTCP("tcp",nil,tcpAddr)
+  conn,err := net.DialTCP("tcp",bindAddr,tcpAddr)
   checkError(err)
 
   timeoutDuration := 600 * time.Second
@@ -80,7 +80,6 @@ func main() {
 
 
     if ( strings.Contains(line,"NOTICE") && !identified ) {
-
       _,err = conn.Write([]byte("USER " + nick + " \"\" \"\" :" + nick + "\r\n"))
       checkError(err)
 
@@ -168,17 +167,6 @@ func main() {
 
       // End of bot directed messages
       } else {
-        if strings.Contains(msgPart,"\x01ACTION") {
-          actionList := strings.Split(msgPart,"\x01")
-          if  len(actionList) == 3 {
-            actionList[1] = "Here " + randomPronoun() + " have some canadough!!"
-            _,err = conn.Write([]byte(cmd + " " + from + " :" +  strings.Join(actionList,"\x01")))
-
-            if debug >= 2 {
-              fmt.Printf("We are actioned!\n")
-            }
-          }
-        }
 
         if strings.Contains(msgPart,nick) && strings.Contains(to,"#") {
 
@@ -223,7 +211,6 @@ func randomPronoun() (string) {
     "bro",
     "mate",
   }
-
   return pronouns[rand.Int() % len(pronouns)]
 }
 
@@ -237,11 +224,8 @@ func randomAnswer() (string) {
     "I Beelzaboot is a fremium IRC Bot!! Free\"mium\". The \"mium\" is Latin for \"not really.\"",
     "%s just because your dad make a good living with my music doesn't mean you can go blow it all on Canadough!",
   }
-
   return answers[rand.Int() % len(answers)];
 }
-
-
 
 
 func prepareSqlite(nick string) (*sql.DB) {
@@ -282,7 +266,6 @@ func prepareSqlite(nick string) (*sql.DB) {
 
 func db_logIrcMessage(db *sql.DB,irc ircmessage) {
 
-
   tx, err := db.Begin()
 
   if err != nil {
@@ -303,6 +286,5 @@ func db_logIrcMessage(db *sql.DB,irc ircmessage) {
   }
 
   tx.Commit()
-
 
 }
